@@ -31,6 +31,7 @@ This document provides instructions for contributors to the vLLM Ascend project.
     - [NPU Considerations](#npu-considerations)
     - [Commit and PR](#commit-and-pr)
 - [Quick Start for Contributors](#quick-start-for-contributors)
+- [Cursor Cloud specific instructions](#cursor-cloud-specific-instructions)
 - [References](#references)
 
 ---
@@ -409,6 +410,22 @@ Before merging, verify:
    ```
 
 11. Create a PR from your fork to the main repository with clear description
+
+---
+
+## Cursor Cloud specific instructions
+
+Cloud Agent VMs do not have an Ascend NPU or the CANN toolkit. Use the CPU unit-test path. Do not compile custom kernels here.
+
+- Upstream vLLM is checked out at `/opt/vllm` from `.github/vllm-main-verified.commit` and installed with `VLLM_TARGET_DEVICE=empty`.
+- `usercustomize` sets `SOC_VERSION=ascend910b1`, `COMPILE_CUSTOM_KERNELS=0`, `TORCH_DEVICE_BACKEND_AUTOLOAD=0`, and `VLLM_TARGET_DEVICE=empty` when those variables are unset. `COMPILE_CUSTOM_KERNELS=0` is required because kernel builds need CANN.
+- CPU wheels are `torch==2.10.0+cpu`, `torchvision==0.25.0+cpu`, and `torchaudio==2.10.0+cpu`. `torch-npu` is installed, but importing it fails without `libhccl.so`. `tests/ut/conftest.py` mocks `torch_npu` when `npu-smi` is missing.
+- `/usr/bin/c++` is Clang and cannot link `libstdc++`. Extension builds need `CC=gcc` and `CXX=g++`.
+- `triton-ascend==3.2.1` ships `triton/_C/libtriton.so`. Reinstall that wheel with `--no-deps` after any stock `triton` install so the Ascend library stays on disk.
+- `pytest`, `pre-commit`, and `vllm` are on `/usr/local/bin`. Other user-site tools are in `~/.local/bin`.
+- CPU check: `pytest -q tests/ut/test_envs.py tests/ut/test_ascend_config.py`
+- Lint check: `pre-commit run ruff-check --files <paths>`
+- End-to-end tests and `vllm serve` need NPU hardware. This VM cannot run them.
 
 ---
 
